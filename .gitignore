@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+checkpoints/
+hand_ppo.zip
+hand_reward_plot.png
+MUJOCO_LOG.TXT
