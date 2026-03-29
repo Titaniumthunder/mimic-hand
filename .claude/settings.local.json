@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import mujoco; print\\(mujoco.__version__\\)\")",
+      "Bash(pip3 show:*)",
+      "Read(//usr/local/lib/**)",
+      "Read(//Users/alexsalamati/Library/Python/**)",
+      "Bash(python3 -m pip list)",
+      "Bash(\"/Users/alexsalamati/Personal Project/ball-balancer/.venv/bin/python3\" -c \"import mujoco; print\\(mujoco.__version__\\)\")",
+      "Read(//Users/alexsalamati/Personal Project/ball-balancer/.venv/**)",
+      "Read(//Users/alexsalamati/Personal Project/ball-balancer/.venv/bin/**)",
+      "Bash(MJPYTHON=\"/Users/alexsalamati/Personal Project/ball-balancer/.venv/lib/python3.10/site-packages/mujoco/MuJoCo_\\(mjpython\\).app/Contents/MacOS/mjpython\" \"$MJPYTHON\" --version)",
+      "Bash(ps:*)",
+      "Bash(kill 78560)",
+      "Bash(find '/Users/alexsalamati/Personal Project/ball-balancer/.venv/lib' -name mjpython -path */MacOS/*)"
+    ]
+  }
+}
