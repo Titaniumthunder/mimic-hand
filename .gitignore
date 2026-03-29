@@ -4,3 +4,9 @@ checkpoints/
 hand_ppo.zip
 hand_reward_plot.png
 MUJOCO_LOG.TXT
+.claude/
+.venv/
+.DS_Store
+*.png
+tb_logs/
+
