@@ -138,7 +138,7 @@ class HandGraspEnv(gym.Env):
         self.model = mujoco.MjModel.from_xml_string(XML)
         self.data  = mujoco.MjData(self.model)
 
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(18,), dtype=np.float32)
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(33,), dtype=np.float32)
         self.action_space      = spaces.Box(-1, 1, shape=(15,), dtype=np.float32)
 
         self.object_body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "object")
@@ -198,9 +198,12 @@ class HandGraspEnv(gym.Env):
         return obs, reward, terminated, truncated, {}
 
     def _get_obs(self):
-        joint_angles = self.data.qpos[:15].astype(np.float32)
-        object_pos   = self.data.xpos[self.object_body_id].astype(np.float32)
-        return np.concatenate([joint_angles, object_pos])
+        joint_angles  = self.data.qpos[:15].astype(np.float32)
+        object_pos    = self.data.xpos[self.object_body_id].astype(np.float32)
+        tip_positions = np.array(
+            [self.data.xpos[tid] for tid in self.tip_ids], dtype=np.float32
+        ).flatten()  # 5 tips × 3 = 15 values
+        return np.concatenate([joint_angles, object_pos, tip_positions])
 
     def _count_ball_contacts(self):
         """Count contacts involving the ball geom (physical touch, not proximity)."""
@@ -214,26 +217,14 @@ class HandGraspEnv(gym.Env):
     def _get_reward(self):
         object_pos = self.data.xpos[self.object_body_id]
         n_contacts = self._count_ball_contacts()
-        reward = 0.0
+        reward     = 0.0
 
-        lift_height = object_pos[2] - 0.36  # 0 at spawn, positive = lifted
+        lift_height = object_pos[2] - 0.36
 
-        # Only reward contact if the ball is actually off the ground
-        if n_contacts >= 2 and lift_height > 0.02:
-            reward += n_contacts * 0.1
-
-        # Hold reward: ball clearly lifted with firm grasp
-        if n_contacts >= 3 and object_pos[2] > 0.42:
-            reward += 3.0
-
-        # Strong lift bonus
-        if n_contacts >= 3 and object_pos[2] > 0.46:
-            reward += 10.0
-
-        # Penalize flat hand
-        avg_joint = np.mean(np.abs(self.data.qpos[:15]))
-        if avg_joint < 0.1:
-            reward -= 0.5
+        # v3: reward only when ball is physically elevated with 3+ contacts.
+        # No shaping, no curl reward — pure lift signal.
+        if n_contacts >= 3 and lift_height > 0.0:
+            reward += lift_height * 50.0
 
         return reward
 

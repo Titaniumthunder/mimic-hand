@@ -86,14 +86,14 @@ if 'MJPYTHON_BIN' not in os.environ:
 import time
 import mujoco
 import mujoco.viewer
-from stable_baselines3 import PPO
+from stable_baselines3 import SAC
 from grasp_env import HandGraspEnv
 
-checkpoint = sys.argv[1] if len(sys.argv) > 1 else "checkpoints/hand_ppo_2000000_steps.zip"
+checkpoint = sys.argv[1] if len(sys.argv) > 1 else "hand_sac.zip"
 print(f"Loading policy: {checkpoint}")
 
 env = HandGraspEnv()
-model = PPO.load(checkpoint, env=env, device="cpu")
+model = SAC.load(checkpoint, env=env, device="cpu")
 
 obs, _ = env.reset()
 total_reward = 0.0
@@ -102,9 +102,9 @@ episode = 1
 print(f"Starting episode {episode} — close the viewer window to exit.\n")
 
 with mujoco.viewer.launch_passive(env.model, env.data) as viewer:
-    viewer.cam.distance = 0.8
-    viewer.cam.elevation = -20
-    viewer.cam.azimuth  = 45
+    viewer.cam.distance = 0.6
+    viewer.cam.elevation = -30
+    viewer.cam.azimuth  = 180
 
     while viewer.is_running():
         step_start = time.time()

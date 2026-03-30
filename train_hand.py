@@ -1,11 +1,8 @@
 import os
-import multiprocessing
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import torch
-from stable_baselines3 import PPO
-from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 
 from grasp_env import HandGraspEnv
@@ -32,7 +29,7 @@ class RewardCallback(BaseCallback):
         self.ax.clear()
         self.ax.set_xlabel("Episode")
         self.ax.set_ylabel("Reward")
-        self.ax.set_title("PPO Mimic Hand — Episode Reward")
+        self.ax.set_title("SAC Mimic Hand — Episode Reward")
         eps = list(range(1, len(self.episode_rewards) + 1))
         self.ax.plot(eps, self.episode_rewards, alpha=0.4, color="steelblue", label="Reward")
         if len(self.episode_rewards) >= 20:
@@ -45,40 +42,40 @@ class RewardCallback(BaseCallback):
         self.fig.savefig(self.save_path, dpi=100)
 
 def main():
-    N_ENVS      = 128    #hand sim is heavier
-    TOTAL_STEPS = 20_000_000
-    MODEL_PATH  = "hand_ppo"
+    TOTAL_STEPS = 1_000_000
+    MODEL_PATH  = "hand_sac"
     PLOT_PATH   = "hand_reward_plot.png"
 
     os.makedirs("checkpoints", exist_ok=True)
 
-    print(f"Creating {N_ENVS} parallel environments...")
-    vec_env = make_vec_env(HandGraspEnv, n_envs=N_ENVS)
+    # SAC requires a single (non-vectorized) env
+    env = HandGraspEnv()
 
     if os.path.exists(MODEL_PATH + ".zip"):
         print("Loading existing model...")
-        model = PPO.load(MODEL_PATH, env=vec_env, device="mps")
+        model = SAC.load(MODEL_PATH, env=env, device="cpu")
     else:
         print("Starting fresh...")
-        model = PPO(
-            "MlpPolicy",       # not CnnPolicy — observations are numbers not pixels
-            vec_env,
+        model = SAC(
+            "MlpPolicy",
+            env,
             verbose=1,
             learning_rate=3e-4,
-            n_steps=1024,
+            buffer_size=1_000_000,   # replay buffer — key SAC advantage over PPO
+            learning_starts=10_000,  # collect experience before first update
             batch_size=256,
-            n_epochs=10,
+            tau=0.005,               # soft target update
             gamma=0.99,
-            gae_lambda=0.95,
-            ent_coef=0.01,
-            clip_range=0.2,
-            device="mps",
+            train_freq=1,
+            gradient_steps=1,
+            ent_coef="auto",         # automatic entropy tuning
+            device="cpu",
         )
 
     checkpoint_cb = CheckpointCallback(
-        save_freq=50_000 // N_ENVS,
+        save_freq=50_000,
         save_path="./checkpoints/",
-        name_prefix="hand_ppo",
+        name_prefix="hand_sac",
     )
     reward_cb = RewardCallback(save_path=PLOT_PATH)
 
@@ -86,9 +83,8 @@ def main():
     model.learn(total_timesteps=TOTAL_STEPS, callback=[checkpoint_cb, reward_cb])
 
     model.save(MODEL_PATH)
-    vec_env.close()
+    env.close()
     print(f"\nDone! Model saved → {MODEL_PATH}.zip")
 
 if __name__ == "__main__":
-    multiprocessing.set_start_method("spawn", force=True)
     main()
